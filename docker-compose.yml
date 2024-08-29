@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # Laravel Backend
+  backend:
+    build:
+      context: ./docker/backend
+    container_name: laravel_backend
+    restart: unless-stopped
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=artapp_database
+      - DB_USERNAME=artur
+      - DB_PASSWORD=secret
+      - TZ=Europe/Warsaw
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - MAIL_USERNAME=null
+      - MAIL_PASSWORD=null
+      - MAIL_ENCRYPTION=null
+      - MAIL_FROM_ADDRESS="hello@example.com"
+      - FILESYSTEM_DISK=public
+    volumes:
+      - ./backend:/var/www/html
+#      - ./docker/backend/php.ini:/usr/local/etc/php/php.ini
+    networks:
+      - laravel
+    depends_on:
+      - db
+      - nginx
+
+  # MariaDB
+  db:
+    image: mariadb:11.1
+    ports:
+      - 3306:3306
+    container_name: mariadb_artapp
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: secret
+      MARIADB_DATABASE: artapp_database
+      MARIADB_USER: artur
+      MARIADB_PASSWORD: secret
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - laravel
+
+  # phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin:5.2.1
+    container_name: phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "8080:80"
+    networks:
+      - laravel
+
+  # MailHog
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - laravel
+
+  # Nginx
+  nginx:
+    image: nginx:1.25
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./backend:/var/www/html
+      - ./docker/backend/nginx.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - laravel
+
+volumes:
+  db_data:
+
+networks:
+  laravel:
+    driver: bridge
